@@ -64,21 +64,27 @@ The only requirement is **Java 17 or newer** (free).
 
 > No other software, database server, or internet connection is required.
 
-### 2. Get the application
-Two ways (choose one):
+### 2. Get the application (easiest)
+> **Use the ready-made install package.** Everything you need is already in the
+> **`DNS POS Installation/`** folder in this repository:
+> - `DNS-BookShop-POS.jar`  (the application)
+> - `run.bat` (Windows launcher) and `run.sh` (Linux/Mac launcher)
+> - `INSTALL.md` (step-by-step shop-PC guide)
 
-**Option A – Already-built jar (recommended for the shop):**
-Copy `DNS-BookShop-POS.jar` plus `run.bat` (Windows) or `run.sh` (Linux/Mac) into a
-folder on the shop PC (e.g. `C:\DNS BookShop\` or `~/DNSBookShop/`).
+Copy that whole **`DNS POS Installation`** folder to the shop PC (e.g.
+`C:\DNS BookShop\` or `~/DNSBookShop/`) and follow its `INSTALL.md`.
 
-**Option B – Build from source:**
+**Alternatively – build from source:**
 ```bash
 mvn clean package
 # Produces: target/DNS-BookShop-POS.jar
 ```
+Then `cp target/DNS-BookShop-POS.jar "DNS POS Installation/"` to refresh the install
+package with your latest build.
 
 ### 3. Run it
-- **Windows:** double-click `run.bat` (or `java -jar DNS-BookShop-POS.jar`).
+- **Windows:** double-click `run.bat` in the install folder (or
+  `java -jar DNS-BookShop-POS.jar`).
 - **Linux/Mac:** `./run.sh` (or `java -jar DNS-BookShop-POS.jar`).
 - Optional: create a desktop shortcut / add to startup so it opens on boot.
 
