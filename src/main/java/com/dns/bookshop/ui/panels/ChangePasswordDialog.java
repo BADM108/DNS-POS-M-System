@@ -3,11 +3,11 @@ package com.dns.bookshop.ui.panels;
 import com.dns.bookshop.db.repositories.UserRepository;
 import com.dns.bookshop.models.User;
 import com.dns.bookshop.services.AuthService;
+import com.dns.bookshop.theme.Toast;
+import com.dns.bookshop.theme.UI;
+import com.dns.bookshop.theme.UIStyle;
 import com.dns.bookshop.util.PasswordUtil;
 
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
@@ -17,34 +17,35 @@ import java.awt.Insets;
 
 public class ChangePasswordDialog {
 
-    private final JFrame parent;
+    private final java.awt.Window parent;
     private final UserRepository userRepo = new UserRepository();
 
-    public ChangePasswordDialog(JFrame parent) {
+    public ChangePasswordDialog(java.awt.Window parent) {
         this.parent = parent;
     }
 
     public void showDialog() {
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(UIStyle.SURFACE);
         GridBagConstraints gc = new GridBagConstraints();
         gc.insets = new Insets(8, 8, 8, 8);
 
-        JPasswordField current = new JPasswordField(16);
-        JPasswordField newPass = new JPasswordField(16);
-        JPasswordField confirm = new JPasswordField(16);
+        JPasswordField current = themeField(new JPasswordField(16));
+        JPasswordField newPass = themeField(new JPasswordField(16));
+        JPasswordField confirm = themeField(new JPasswordField(16));
 
         gc.gridx = 0; gc.gridy = 0;
-        panel.add(new JLabel("Current password:"), gc);
+        panel.add(UI.label("Current password:"), gc);
         gc.gridx = 1;
         panel.add(current, gc);
 
         gc.gridx = 0; gc.gridy = 1;
-        panel.add(new JLabel("New password:"), gc);
+        panel.add(UI.label("New password:"), gc);
         gc.gridx = 1;
         panel.add(newPass, gc);
 
         gc.gridx = 0; gc.gridy = 2;
-        panel.add(new JLabel("Confirm new:"), gc);
+        panel.add(UI.label("Confirm new:"), gc);
         gc.gridx = 1;
         panel.add(confirm, gc);
 
@@ -58,22 +59,26 @@ public class ChangePasswordDialog {
         String cf = new String(confirm.getPassword());
 
         if (np.length() < 4) {
-            JOptionPane.showMessageDialog(parent, "New password must be at least 4 characters.",
-                    "Weak password", JOptionPane.WARNING_MESSAGE);
+            Toast.showWarning(parent, "New password must be at least 4 characters.");
             return;
         }
         if (!np.equals(cf)) {
-            JOptionPane.showMessageDialog(parent, "New passwords do not match.",
-                    "Mismatch", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(parent, "New passwords do not match.");
             return;
         }
         if (!PasswordUtil.verify(cur, u.getPasswordHash())) {
-            JOptionPane.showMessageDialog(parent, "Current password is incorrect.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(parent, "Current password is incorrect.");
             return;
         }
         userRepo.changePassword(u.getId(), PasswordUtil.hash(np));
-        JOptionPane.showMessageDialog(parent, "Password changed successfully.", "Done",
-                JOptionPane.INFORMATION_MESSAGE);
+        Toast.showSuccess(parent, "Password changed successfully.");
+    }
+
+    private JPasswordField themeField(JPasswordField f) {
+        f.setFont(UIStyle.NORMAL);
+        f.setForeground(UIStyle.TEXT);
+        f.setCaretColor(UIStyle.PRIMARY);
+        f.setColumns(16);
+        return f;
     }
 }

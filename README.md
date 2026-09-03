@@ -5,6 +5,29 @@ A complete, industrial **desktop Point of Sale application** for **DNS BookShop*
 PC** using SQLite — **no internet, no server, no hosting** needed.
 
 ![Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+
+---
+
+## Modern interface
+
+Version 2.0 brings a complete visual overhaul with a clean, professional
+**enterprise** look:
+
+- **Modern theme** — deep navy sidebar, light grey content area, and a purple
+  accent used consistently across buttons, focus and highlights.
+- **Icon-based grouped navigation** — the sidebar is divided into *Main*,
+  *Management* and *System* sections with glyph icons, active-state
+  highlighting, and hover feedback so workers find screens instantly.
+- **Keyboard shortcuts** — hit `Ctrl + 1`…`Ctrl + 8` to jump straight to any
+  screen (Dashboard, POS, Products, Customers, Sales, Reports, Workers,
+  Settings). `Ctrl + P` always opens the Point of Sale, so cashiers can get
+  there in one keystroke.
+- **Rounded buttons & cards**, zebra-striped tables, softer borders, generous
+  whitespace and consistent spacing across every screen.
+- **Toast notifications** — clean, non-blocking confirmations (success/error)
+  replace most pop-ups, so a sale or save never interrupts your flow.
+- **Redesigned login** with a brand panel and a focused sign-in card.
 
 ---
 

@@ -1,17 +1,18 @@
 package com.dns.bookshop.ui.panels;
 
+import com.dns.bookshop.config.AppConfig;
 import com.dns.bookshop.db.Database;
-import com.dns.bookshop.theme.UIStyle;
+import com.dns.bookshop.theme.Toast;
 import com.dns.bookshop.theme.UI;
+import com.dns.bookshop.theme.UIStyle;
 
-import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.GridLayout;
 
 /**
@@ -19,35 +20,36 @@ import java.awt.GridLayout;
  */
 public class SettingsPanel extends JPanel implements Refreshable {
 
+    private final java.awt.Window owner;
     private JTextField shopName, taxRate, invoicePrefix;
 
-    public SettingsPanel() {
+    public SettingsPanel(java.awt.Window owner) {
         super(new BorderLayout());
+        this.owner = owner;
         setBackground(UIStyle.BG);
-        setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        setBorder(new javax.swing.border.EmptyBorder(16, 20, 16, 20));
         build();
     }
 
     private void build() {
-        add(UI.title("Shop Settings"), BorderLayout.NORTH);
-
         JPanel card = UI.card();
-        card.setLayout(new BorderLayout(0, 14));
-        card.add(UI.section("DNS BookShop Configuration"), BorderLayout.NORTH);
+        card.setLayout(new BorderLayout(0, 16));
+        card.setPreferredSize(new Dimension(560, 320));
+        card.add(UI.section("Shop Configuration"), BorderLayout.NORTH);
 
         JPanel form = new JPanel(new GridLayout(0, 2, 12, 12));
         form.setOpaque(false);
 
         form.add(UI.label("Shop name:"));
-        shopName = new JTextField();
+        shopName = UI.textField();
         form.add(shopName);
 
         form.add(UI.label("Tax rate (%):"));
-        taxRate = new JTextField();
+        taxRate = UI.textField();
         form.add(taxRate);
 
         form.add(UI.label("Invoice prefix:"));
-        invoicePrefix = new JTextField();
+        invoicePrefix = UI.textField();
         form.add(invoicePrefix);
 
         card.add(form, BorderLayout.CENTER);
@@ -76,18 +78,16 @@ public class SettingsPanel extends JPanel implements Refreshable {
             db.setSetting("shop.name", shopName.getText().trim());
             db.setSetting("tax.rate", String.valueOf(t));
             db.setSetting("invoice.prefix", invoicePrefix.getText().trim().isEmpty() ? "DNS" : invoicePrefix.getText().trim());
-            JOptionPane.showMessageDialog(this, "Settings saved.", "Done",
-                    JOptionPane.INFORMATION_MESSAGE);
+            Toast.showSuccess(owner, "Settings saved.");
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Tax rate must be a number between 0 and 100.",
-                    "Invalid input", JOptionPane.WARNING_MESSAGE);
+            Toast.showError(owner, "Tax rate must be a number between 0 and 100.");
         }
     }
 
     @Override
     public void refresh() {
         Database db = Database.getInstance();
-        shopName.setText(db.getSetting("shop.name", com.dns.bookshop.config.AppConfig.SHOP_NAME));
+        shopName.setText(db.getSetting("shop.name", AppConfig.SHOP_NAME));
         taxRate.setText(db.getSetting("tax.rate", "0"));
         invoicePrefix.setText(db.getSetting("invoice.prefix", "DNS"));
     }

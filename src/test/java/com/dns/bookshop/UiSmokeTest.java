@@ -47,14 +47,14 @@ public class UiSmokeTest {
         ur.savePermissions(w.getId(), FunctionalTest.defaultWorkerPerms());
 
         int fails = 0;
-        fails += build("CustomerPanel", CustomerPanel::new);
-        fails += build("DashboardPanel", DashboardPanel::new);
-        fails += build("PosPanel", PosPanel::new);
-        fails += build("ProductPanel", ProductPanel::new);
-        fails += build("ReportPanel", ReportPanel::new);
-        fails += build("SalesPanel", SalesPanel::new);
-        fails += build("SettingsPanel", SettingsPanel::new);
-        fails += build("UsersPanel", UsersPanel::new);
+        fails += build("CustomerPanel", () -> new CustomerPanel(null));
+        fails += build("DashboardPanel", () -> new DashboardPanel(null));
+        fails += build("PosPanel", () -> new PosPanel(null));
+        fails += build("ProductPanel", () -> new ProductPanel(null));
+        fails += build("ReportPanel", () -> new ReportPanel(null));
+        fails += build("SalesPanel", () -> new SalesPanel(null));
+        fails += build("SettingsPanel", () -> new SettingsPanel(null));
+        fails += build("UsersPanel", () -> new UsersPanel(null));
 
         System.out.println("== UI Smoke: " + fails + " failure(s) ==");
         if (fails > 0) System.exit(1);

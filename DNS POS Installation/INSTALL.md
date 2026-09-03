@@ -78,25 +78,43 @@ same folder.
 
 ## Step 5 — Connect the barcode scanner
 
-- In the **Point of Sale** screen, click the scan box and scan an item — it appears
-  on the bill instantly.
-- To register new stock: open **Products & Barcodes**, tick *"Scan existing
-  barcode"*, scan, fill details, Save.
-- To get a barcode for a product that has none, use *"Auto-generate"* (books get an
-  ISBN barcode, stationery gets a Code-128 barcode) and choose **Print barcode label**.
+Your scanner (e.g. **RL-LSH2500**) works like a USB keyboard — no special driver
+needed. Just plug it in and it types the barcode into whichever field is focused.
+
+- **Point of Sale:** click the scan box and scan an item — it appears on the bill
+  instantly.
+- **Products & Barcodes:** scan a barcode to *instantly open* that product so you
+  can view or update it. Scanning an unknown barcode starts registering a brand
+  new product with that code. No typing needed.
+- **Product with no barcode:** tick *“Auto-generate…”* to create one from the
+  product info (books get an ISBN/EAN barcode, stationery gets a Code-128 DNS
+  barcode).
+- **Export labels as PDF:** in **Products & Barcodes**, use the
+  **Export Labels (PDF)** button. It writes an **A4 sheet of barcode labels** (grid
+  layout, ready to cut) into the `data/exports` folder and opens it automatically,
+  so you can print as many copies as you like or keep the PDF for later.
+- **Print one label:** select a product and use **Print Label** to send it
+  straight to your printer.
 
 ---
 
-## Where is all the data kept? (all on the PC, no server)
+## Where is all the data kept? (all inside this folder, no server)
+
+Everything is stored **inside a `data` sub-folder that sits right next to the app**.
+This makes the whole system **portable**: copy this entire folder to any shop PC
+(or to a backup pen drive) and all your products, sales, settings and labels come
+with it.
 
 | Item | Location |
 |------|----------|
-| Database (SQLite) | `<Home>/DNSBookShop/data/dns_bookshop.db` |
-| Backups | `<Home>/DNSBookShop/data/exports/backup-*.db` |
-| Sales CSV exports | `<Home>/DNSBookShop/data/exports/sales-*.csv` |
+| Database (SQLite) | `DNS POS Installation/data/dns_bookshop.db` |
+| Backups | `DNS POS Installation/data/exports/backup-*.db` |
+| Sales CSV exports | `DNS POS Installation/data/exports/sales-*.csv` |
+| Barcode label PDFs | `DNS POS Installation/data/exports/barcode-labels-*.pdf` |
 
-**Back up the `dns_bookshop.db` file** regularly (or use the app's **Reports →
-Backup Database** button) to a pen drive so you never lose records.
+**Back up the `data` folder** regularly (or use the app's **Reports → Backup
+Database** button) to a pen drive so you never lose records. Because everything
+is in one folder, backing up is as simple as copying it.
 
 ---
 

@@ -10,21 +10,21 @@ import com.dns.bookshop.models.SaleItem;
 import com.dns.bookshop.models.User;
 import com.dns.bookshop.services.AuthService;
 import com.dns.bookshop.services.SaleService;
-import com.dns.bookshop.theme.UIStyle;
+import com.dns.bookshop.theme.Toast;
 import com.dns.bookshop.theme.UI;
+import com.dns.bookshop.theme.UIStyle;
 import com.dns.bookshop.util.BillPrinter;
 
-import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.text.DecimalFormat;
 import java.time.Instant;
@@ -40,28 +40,30 @@ public class SalesPanel extends JPanel implements Refreshable {
     private final AuthService auth = AuthService.getInstance();
     private final SaleRepository saleRepo = new SaleRepository();
     private final SaleService saleService = new SaleService();
+    private final java.awt.Window owner;
     private static final DecimalFormat MONEY = new DecimalFormat("#,##0.00");
 
     private JComboBox<String> rangeCombo;
     private JTable table, itemsTable;
     private DefaultTableModel model, itemsModel;
 
-    public SalesPanel() {
+    public SalesPanel(java.awt.Window owner) {
         super(new BorderLayout());
+        this.owner = owner;
         setBackground(UIStyle.BG);
-        setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        setBorder(new javax.swing.border.EmptyBorder(16, 20, 16, 20));
         build();
     }
 
     private void build() {
-        JPanel top = new JPanel(new BorderLayout());
+        JPanel top = new JPanel(new BorderLayout(16, 0));
         top.setOpaque(false);
-        top.add(UI.title("Sales History"), BorderLayout.WEST);
 
-        JPanel controls = new JPanel(new BorderLayout());
+        JPanel controls = new JPanel(new BorderLayout(8, 0));
         controls.setOpaque(false);
         rangeCombo = new JComboBox<>(new String[]{"Today", "Last 7 days", "This month", "All time"});
         rangeCombo.addActionListener(e -> loadSales());
+        rangeCombo.setPreferredSize(new Dimension(160, 38));
         controls.add(rangeCombo, BorderLayout.CENTER);
         JButton refreshBtn = UI.ghost("Refresh");
         refreshBtn.addActionListener(e -> loadSales());
@@ -71,15 +73,18 @@ public class SalesPanel extends JPanel implements Refreshable {
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildSalesList(), buildDetails());
         split.setResizeWeight(0.6);
-        split.setDividerSize(6);
+        split.setDividerSize(8);
+        split.setBorder(null);
+        split.setOpaque(false);
         add(split, BorderLayout.CENTER);
 
         loadSales();
     }
 
     private JPanel buildSalesList() {
-        JPanel p = new JPanel(new BorderLayout());
+        JPanel p = new JPanel(new BorderLayout(0, 8));
         p.setOpaque(false);
+        p.add(UI.section("Sales"), BorderLayout.NORTH);
         model = new DefaultTableModel(new String[]{"Invoice", "Date", "Cashier", "Total", "Method", "Status"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -87,18 +92,22 @@ public class SalesPanel extends JPanel implements Refreshable {
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && table.getSelectedRow() >= 0) loadItemsForSelected();
         });
+        UI.styleTableWithZebra(table);
+        UI.alignColumn(table, 3, JLabel.RIGHT);
         p.add(UI.table(table), BorderLayout.CENTER);
         return p;
     }
 
     private JPanel buildDetails() {
-        JPanel p = new JPanel(new BorderLayout(0, 8));
+        JPanel p = new JPanel(new BorderLayout(0, 10));
         p.setOpaque(false);
         p.add(UI.section("Sale Items"), BorderLayout.NORTH);
         itemsModel = new DefaultTableModel(new String[]{"Item", "Barcode", "Qty", "Price", "Amount"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         itemsTable = new JTable(itemsModel);
+        UI.styleTableWithZebra(itemsTable);
+        for (int c : new int[]{2, 3, 4}) UI.alignColumn(itemsTable, c, JLabel.RIGHT);
         p.add(UI.table(itemsTable), BorderLayout.CENTER);
 
         JPanel actions = new JPanel(new GridLayout(1, 3, 8, 0));
@@ -112,10 +121,7 @@ public class SalesPanel extends JPanel implements Refreshable {
         actions.add(reprint);
         actions.add(refund);
         actions.add(details);
-        JPanel bottom = new JPanel(new BorderLayout());
-        bottom.add(actions, BorderLayout.CENTER);
-        bottom.add(new JLabel(" "), BorderLayout.SOUTH);
-        p.add(bottom, BorderLayout.SOUTH);
+        p.add(actions, BorderLayout.SOUTH);
         return p;
     }
 
@@ -179,8 +185,7 @@ public class SalesPanel extends JPanel implements Refreshable {
     private void reprintBill() {
         Sale s = selectedSale();
         if (s == null) {
-            JOptionPane.showMessageDialog(this, "Select a sale first.", "No selection",
-                    JOptionPane.WARNING_MESSAGE);
+            Toast.showInfo(owner, "Select a sale first.");
             return;
         }
         Customer c = s.getCustomerId() != null ? new CustomerRepository().findById(s.getCustomerId()) : null;
@@ -188,26 +193,22 @@ public class SalesPanel extends JPanel implements Refreshable {
         try {
             new BillPrinter(s, c, u).print();
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, "Printing failed: " + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(owner, "Printing failed: " + ex.getMessage());
         }
     }
 
     private void refundSale() {
         Sale s = selectedSale();
         if (s == null) {
-            JOptionPane.showMessageDialog(this, "Select a sale first.", "No selection",
-                    JOptionPane.WARNING_MESSAGE);
+            Toast.showInfo(owner, "Select a sale first.");
             return;
         }
         if (!auth.hasPermission(Permissions.REFUND_SALES)) {
-            JOptionPane.showMessageDialog(this, "You do not have permission to refund sales.",
-                    "Permission denied", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(owner, "You do not have permission to refund sales.");
             return;
         }
         if (Sale.STATUS_REFUNDED.equals(s.getStatus())) {
-            JOptionPane.showMessageDialog(this, "This sale has already been refunded.",
-                    "Already refunded", JOptionPane.INFORMATION_MESSAGE);
+            Toast.showWarning(owner, "This sale has already been refunded.");
             return;
         }
         int confirm = JOptionPane.showConfirmDialog(this,
@@ -217,11 +218,10 @@ public class SalesPanel extends JPanel implements Refreshable {
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 saleService.refund(s.getId(), auth.getCurrentUser());
-                JOptionPane.showMessageDialog(this, "Sale refunded. Stock returned.",
-                        "Done", JOptionPane.INFORMATION_MESSAGE);
+                Toast.showSuccess(owner, "Sale refunded. Stock returned.");
                 loadSales();
             } catch (RuntimeException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                Toast.showError(owner, ex.getMessage());
             }
         }
     }

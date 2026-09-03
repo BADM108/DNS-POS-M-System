@@ -1,5 +1,6 @@
 package com.dns.bookshop.ui.panels;
 
+import com.dns.bookshop.db.Database;
 import com.dns.bookshop.db.repositories.CustomerRepository;
 import com.dns.bookshop.models.Customer;
 import com.dns.bookshop.models.Permissions;
@@ -10,12 +11,12 @@ import com.dns.bookshop.models.User;
 import com.dns.bookshop.services.AuthService;
 import com.dns.bookshop.services.ProductService;
 import com.dns.bookshop.services.SaleService;
-import com.dns.bookshop.theme.UIStyle;
+import com.dns.bookshop.theme.Toast;
 import com.dns.bookshop.theme.UI;
+import com.dns.bookshop.theme.UIStyle;
 import com.dns.bookshop.util.BillPrinter;
 import com.dns.bookshop.util.ScannerInput;
 
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -23,19 +24,13 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.Insets;
+import java.awt.Window;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +45,7 @@ public class PosPanel extends JPanel implements Refreshable {
     private final ProductService productService = new ProductService();
     private final SaleService saleService = new SaleService();
     private final CustomerRepository customerRepo = new CustomerRepository();
+    private final Window owner;
 
     private static final DecimalFormat MONEY = new DecimalFormat("#,##0.00");
 
@@ -66,113 +62,99 @@ public class PosPanel extends JPanel implements Refreshable {
         int qty;
     }
 
-    public PosPanel() {
+    public PosPanel(Window owner) {
         super(new BorderLayout());
+        this.owner = owner;
         setBackground(UIStyle.BG);
-        setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        setBorder(new javax.swing.border.EmptyBorder(16, 20, 16, 20));
         build();
     }
 
     private void build() {
-        // === Left: cart ===
         JPanel left = UI.card();
-        left.setLayout(new BorderLayout());
+        left.setLayout(new BorderLayout(0, 12));
 
-        JPanel topBlock = new JPanel(new BorderLayout());
-        topBlock.setOpaque(false);
-        JPanel headerLeft = new JPanel(new GridLayout(1, 2));
-        headerLeft.setOpaque(false);
-        headerLeft.add(new JLabel("Scan or type barcode"));
-        JLabel hint = new JLabel("Scanner ready");
-        hint.setFont(UIStyle.SMALL);
-        hint.setForeground(UIStyle.MUTED);
-        hint.setHorizontalAlignment(JLabel.RIGHT);
-        headerLeft.add(hint);
-
-        JPanel scanRow = new JPanel(new BorderLayout(8, 0));
+        JPanel scanRow = new JPanel(new BorderLayout(10, 0));
         scanRow.setOpaque(false);
-        scanRow.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
-        scanField = new JTextField();
-        scanField.setFont(new Font("SansSerif", Font.PLAIN, 18));
-        JButton addBtn = UI.primary("Add");
+        scanField = UI.textField();
+        scanField.putClientProperty("JTextField.placeholderText", "Scan or type a barcode, then press Enter");
+        scanField.setFont(UIStyle.NORMAL.deriveFont(16f));
+        JButton addBtn = UI.primary("Add \uFF0B");
         addBtn.addActionListener(e -> addByBarcode(scanField.getText()));
         scanRow.add(scanField, BorderLayout.CENTER);
         scanRow.add(addBtn, BorderLayout.EAST);
+        left.add(scanRow, BorderLayout.NORTH);
 
-        topBlock.add(headerLeft, BorderLayout.NORTH);
-        topBlock.add(scanRow, BorderLayout.CENTER);
-        left.add(topBlock, BorderLayout.NORTH);
-
-        JPanel tableWrap = new JPanel(new BorderLayout());
-        tableWrap.setOpaque(false);
         cartModel = new DefaultTableModel(new String[]{"Item", "Barcode", "Qty", "Price", "Amount"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         cartTable = new JTable(cartModel);
-        JScrollPane sp = UI.table(cartTable);
-        sp.setPreferredSize(new Dimension(640, 420));
-        tableWrap.add(sp, BorderLayout.CENTER);
-        left.add(tableWrap, BorderLayout.CENTER);
+        UI.styleTableWithZebra(cartTable);
+        UI.alignColumn(cartTable, 2, JLabel.CENTER);
+        UI.alignColumn(cartTable, 3, JLabel.RIGHT);
+        UI.alignColumn(cartTable, 4, JLabel.RIGHT);
+        left.add(UI.table(cartTable), BorderLayout.CENTER);
 
-        // Capture the scan into the cart.
         ScannerInput.attach(scanField, this::addByBarcode);
 
-        // === Right: totals & payment ===
-        JPanel right = UI.card();
+        JPanel right = new JPanel();
+        right.setOpaque(false);
         right.setPreferredSize(new Dimension(340, 0));
         right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
+        right.setBorder(new javax.swing.border.EmptyBorder(0, 16, 0, 0));
 
-        right.add(UI.section("Payment"));
-        right.add(Box.createVerticalStrut(8));
+        JPanel payCard = UI.card();
+        payCard.setLayout(new BoxLayout(payCard, BoxLayout.Y_AXIS));
+        payCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 560));
 
-        right.add(UI.label("Customer"));
+        JLabel payTitle = UI.section("Payment");
+        payCard.add(payTitle);
+        payCard.add(Box.createVerticalStrut(14));
+
+        payCard.add(fieldLabel("Customer"));
         customerCombo = new JComboBox<>();
         customerCombo.addItem(null);
         for (Customer c : customerRepo.findAll()) customerCombo.addItem(c);
-        customerCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        right.add(customerCombo);
-        right.add(Box.createVerticalStrut(10));
+        customerCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        payCard.add(customerCombo);
+        payCard.add(Box.createVerticalStrut(12));
 
-        right.add(UI.label("Discount (LKR)"));
-        discountField = new JTextField("0");
-        right.add(discountField);
+        payCard.add(fieldLabel("Discount (LKR)"));
+        discountField = UI.textField("0");
+        discountField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        payCard.add(discountField);
+        payCard.add(Box.createVerticalStrut(14));
 
-        right.add(Box.createVerticalStrut(6));
-        subtotalLabel = new JLabel("LKR 0.00");
-        subtotalLabel.setFont(UIStyle.NORMAL);
-        totalLabel = new JLabel("LKR 0.00");
-        totalLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
-        totalLabel.setForeground(UIStyle.PRIMARY);
         countLabel = new JLabel("0 items");
         countLabel.setFont(UIStyle.SMALL);
-        countLabel.setForeground(UIStyle.MUTED);
+        countLabel.setForeground(UIStyle.TEXT_MUTED);
+        payCard.add(countLabel);
+        payCard.add(Box.createVerticalStrut(6));
 
-        right.add(countLabel);
-        right.add(Box.createVerticalStrut(6));
-        JPanel subRow = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        subRow.setOpaque(false);
-        subRow.add(new JLabel("Subtotal:  "));
-        subRow.add(subtotalLabel);
-        right.add(subRow);
-        JPanel totalRow = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        totalRow.setOpaque(false);
-        totalRow.add(new JLabel("TOTAL:  "));
-        totalRow.add(totalLabel);
-        right.add(totalRow);
+        payCard.add(totalsRow("Subtotal", subtotalLabel = new JLabel("LKR 0.00"), false));
+        payCard.add(Box.createVerticalStrut(6));
+        payCard.add(totalsRow("TOTAL", totalLabel = new JLabel("LKR 0.00"), true));
+        payCard.add(Box.createVerticalStrut(14));
 
-        right.add(Box.createVerticalGlue());
+        payCard.add(Box.createVerticalStrut(10));
 
-        JButton checkoutBtn = UI.success("CHECKOUT");
-        checkoutBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        checkoutBtn.setFont(new Font("SansSerif", Font.BOLD, 16));
+        JButton checkoutBtn = UI.success("CHECKOUT  \u2713");
+        checkoutBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        checkoutBtn.setFont(UIStyle.NORMAL_BOLD.deriveFont(16f));
+        checkoutBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         checkoutBtn.addActionListener(e -> checkout());
-        right.add(checkoutBtn);
+        payCard.add(checkoutBtn);
+
+        payCard.add(Box.createVerticalStrut(8));
 
         JButton clearBtn = UI.ghost("Clear Cart");
-        clearBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        clearBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        clearBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         clearBtn.addActionListener(e -> clearCart());
-        right.add(Box.createVerticalStrut(8));
-        right.add(clearBtn);
+        payCard.add(clearBtn);
+
+        right.add(payCard);
+        right.add(Box.createVerticalGlue());
 
         add(left, BorderLayout.CENTER);
         add(right, BorderLayout.EAST);
@@ -180,31 +162,52 @@ public class PosPanel extends JPanel implements Refreshable {
         refresh();
     }
 
+    private JPanel totalsRow(String label, JLabel value, boolean big) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        JLabel l = new JLabel(label);
+        l.setFont(UIStyle.NORMAL_BOLD);
+        l.setForeground(UIStyle.TEXT_MUTED);
+        row.add(l, BorderLayout.WEST);
+        value.setFont(big ? UIStyle.DISPLAY : UIStyle.NORMAL);
+        value.setForeground(big ? UIStyle.PRIMARY : UIStyle.TEXT);
+        value.setHorizontalAlignment(JLabel.RIGHT);
+        row.add(value, BorderLayout.EAST);
+        return row;
+    }
+
+    private JLabel fieldLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(UIStyle.SMALL_BOLD);
+        l.setForeground(UIStyle.TEXT_MUTED);
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return l;
+    }
+
     private void addByBarcode(String raw) {
         String barcode = raw == null ? "" : raw.trim();
         if (barcode.isEmpty()) return;
         Product p = productService.findByBarcode(barcode);
         if (p == null) {
-            JOptionPane.showMessageDialog(this,
-                    "No product found for barcode: " + barcode +
-                    "\n\nRegister this item first under Products & Barcodes.",
-                    "Not found", JOptionPane.INFORMATION_MESSAGE);
+            Toast.showError(owner, "No product found for barcode: " + barcode);
+            scanField.setText("");
             return;
         }
         if (p.getStockQuantity() <= 0) {
-            JOptionPane.showMessageDialog(this, "'" + p.getName() + "' is out of stock.",
-                    "Out of stock", JOptionPane.WARNING_MESSAGE);
+            Toast.showError(owner, "'" + p.getName() + "' is out of stock.");
+            scanField.setText("");
             return;
         }
-        // Validate stock vs cart qty
         int inCart = 0;
         for (CartRow r : cart) if (r.product.getId() == p.getId()) inCart += r.qty;
         if (inCart + 1 > p.getStockQuantity()) {
-            JOptionPane.showMessageDialog(this, "Only " + p.getStockQuantity() + " in stock for '"
-                    + p.getName() + "'.", "Insufficient stock", JOptionPane.WARNING_MESSAGE);
+            Toast.showError(owner, "Only " + p.getStockQuantity() + " in stock for '" + p.getName() + "'.");
+            scanField.setText("");
             return;
         }
         addToCart(p, 1);
+        scanField.setText("");
+        scanField.requestFocusInWindow();
     }
 
     private void addToCart(Product p, int qty) {
@@ -235,7 +238,7 @@ public class PosPanel extends JPanel implements Refreshable {
             qty += r.qty;
             subtotal += amount;
         }
-        countLabel.setText(qty + " items");
+        countLabel.setText(qty + " item" + (qty == 1 ? "" : "s"));
         subtotalLabel.setText("LKR " + MONEY.format(subtotal));
         totalLabel.setText("LKR " + MONEY.format(subtotal));
         discountField.setText("0");
@@ -256,13 +259,11 @@ public class PosPanel extends JPanel implements Refreshable {
 
     private void checkout() {
         if (cart.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Cart is empty. Scan or add items first.",
-                    "Nothing to checkout", JOptionPane.INFORMATION_MESSAGE);
+            Toast.showInfo(owner, "Cart is empty. Scan or add items first.");
             return;
         }
         if (!auth.hasPermission(Permissions.POS)) {
-            JOptionPane.showMessageDialog(this, "You do not have permission to make sales.",
-                    "Permission denied", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(owner, "You do not have permission to make sales.");
             return;
         }
 
@@ -274,8 +275,7 @@ public class PosPanel extends JPanel implements Refreshable {
             discount = 0;
         }
         if (discount < 0 || discount > subtotal) {
-            JOptionPane.showMessageDialog(this, "Discount must be between 0 and the subtotal.",
-                    "Invalid discount", JOptionPane.WARNING_MESSAGE);
+            Toast.showError(owner, "Discount must be between 0 and the subtotal.");
             return;
         }
 
@@ -298,7 +298,7 @@ public class PosPanel extends JPanel implements Refreshable {
             try {
                 paid = Double.parseDouble(input.trim());
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Invalid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                Toast.showError(owner, "Invalid amount.");
                 return;
             }
             if (paid < totalAfterDiscount) {
@@ -322,7 +322,7 @@ public class PosPanel extends JPanel implements Refreshable {
 
         double taxRate = 0;
         try {
-            taxRate = Double.parseDouble(com.dns.bookshop.db.Database.getInstance().getSetting("tax.rate", "0"));
+            taxRate = Double.parseDouble(Database.getInstance().getSetting("tax.rate", "0"));
         } catch (Exception ignored) {}
 
         Customer selected = (Customer) customerCombo.getSelectedItem();
@@ -334,17 +334,17 @@ public class PosPanel extends JPanel implements Refreshable {
             updateCartTable();
 
             int printChoice = JOptionPane.showConfirmDialog(this,
-                    "Sale completed! Invoice " + sale.getInvoiceNumber()
-                    + "  Total: LKR " + MONEY.format(sale.getTotal())
+                    "Sale completed!  Invoice " + sale.getInvoiceNumber()
+                    + "   Total: LKR " + MONEY.format(sale.getTotal())
                     + "\n\nPrint A4 bill now?", "Print bill",
                     JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
             if (printChoice == JOptionPane.YES_OPTION) {
                 printBill(sale, selected);
             }
+            Toast.showSuccess(owner, "Sale complete - Invoice " + sale.getInvoiceNumber());
             clearCart();
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, "Sale could not be completed: " + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(owner, "Sale could not be completed: " + ex.getMessage());
         }
     }
 
@@ -354,14 +354,12 @@ public class PosPanel extends JPanel implements Refreshable {
             BillPrinter printer = new BillPrinter(sale, customer, cashier);
             printer.print();
         } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, "Printing failed: " + ex.getMessage(),
-                    "Print error", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(owner, "Printing failed: " + ex.getMessage());
         }
     }
 
     @Override
     public void refresh() {
-        // Refresh customer dropdown when switching to the panel.
         Customer selected = (Customer) customerCombo.getSelectedItem();
         customerCombo.removeAllItems();
         customerCombo.addItem(null);

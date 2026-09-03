@@ -5,11 +5,11 @@ import com.dns.bookshop.db.repositories.UserRepository;
 import com.dns.bookshop.models.Permissions;
 import com.dns.bookshop.models.User;
 import com.dns.bookshop.services.AuthService;
-import com.dns.bookshop.theme.UIStyle;
+import com.dns.bookshop.theme.Toast;
 import com.dns.bookshop.theme.UI;
+import com.dns.bookshop.theme.UIStyle;
 import com.dns.bookshop.util.PasswordUtil;
 
-import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
@@ -22,6 +22,7 @@ import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -36,21 +37,22 @@ public class UsersPanel extends JPanel implements Refreshable {
 
     private final AuthService auth = AuthService.getInstance();
     private final UserRepository repo = new UserRepository();
+    private final java.awt.Window owner;
 
     private JTable table;
     private DefaultTableModel model;
     private User currentWorker;
 
-    // Permission editor widgets
     private JLabel permTitle;
     private JPanel permBody;
     private final Map<String, JCheckBox> boxes = new LinkedHashMap<>();
     private JTextField newPass;
 
-    public UsersPanel() {
+    public UsersPanel(java.awt.Window owner) {
         super(new BorderLayout());
+        this.owner = owner;
         setBackground(UIStyle.BG);
-        setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+        setBorder(new javax.swing.border.EmptyBorder(16, 20, 16, 20));
         build();
     }
 
@@ -67,20 +69,21 @@ public class UsersPanel extends JPanel implements Refreshable {
     }
 
     private void build() {
-        add(UI.title("Workers & Permissions"), BorderLayout.NORTH);
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildLeft(), buildRight());
         split.setResizeWeight(0.42);
-        split.setDividerSize(6);
+        split.setDividerSize(8);
+        split.setBorder(null);
+        split.setOpaque(false);
         add(split, BorderLayout.CENTER);
         refreshTable();
     }
 
     private Component buildLeft() {
-        JPanel left = new JPanel(new BorderLayout(0, 8));
+        JPanel left = new JPanel(new BorderLayout(0, 10));
         left.setOpaque(false);
 
         JPanel addCard = UI.card();
-        addCard.setLayout(new BorderLayout(0, 8));
+        addCard.setLayout(new BorderLayout(0, 10));
         addCard.add(UI.section("Add Worker"), BorderLayout.NORTH);
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
@@ -88,9 +91,9 @@ public class UsersPanel extends JPanel implements Refreshable {
         gc.insets = new Insets(5, 5, 5, 5);
         gc.fill = GridBagConstraints.HORIZONTAL;
 
-        JTextField usernameF = new JTextField(14);
-        JTextField fullNameF = new JTextField(14);
-        JTextField passF = new JTextField(14);
+        JTextField usernameF = UI.textField(14);
+        JTextField fullNameF = UI.textField(14);
+        JTextField passF = UI.textField(14);
         passF.setText("dns123");
 
         gc.gridx = 0; gc.gridy = 0; form.add(UI.label("Username *"), gc);
@@ -122,10 +125,9 @@ public class UsersPanel extends JPanel implements Refreshable {
                 usernameF.setText("");
                 fullNameF.setText("");
                 refreshTable();
-                JOptionPane.showMessageDialog(this, "Worker created. Tune their permissions in the panel on the right.",
-                        "Done", JOptionPane.INFORMATION_MESSAGE);
+                Toast.showSuccess(owner, "Worker created. Tune permissions on the right.");
             } catch (IllegalArgumentException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Not saved", JOptionPane.WARNING_MESSAGE);
+                Toast.showError(owner, ex.getMessage());
             }
         });
         gc.gridy = 3; gc.gridx = 0; gc.gridwidth = 2;
@@ -143,19 +145,20 @@ public class UsersPanel extends JPanel implements Refreshable {
                 loadPermissionsFor(id);
             }
         });
+        UI.styleTableWithZebra(table);
         left.add(UI.table(table), BorderLayout.CENTER);
         return left;
     }
 
     private Component buildRight() {
         JPanel card = UI.card();
-        card.setLayout(new BorderLayout(0, 10));
+        card.setLayout(new BorderLayout(0, 12));
         permTitle = UI.section("Select a worker to manage permissions");
         card.add(permTitle, BorderLayout.NORTH);
 
         permBody = new JPanel(new GridLayout(0, 2, 8, 8));
         permBody.setOpaque(false);
-        permBody.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        permBody.setBorder(new javax.swing.border.EmptyBorder(4, 4, 4, 4));
         addPerm("pos", "Operate POS / Make sales");
         addPerm("add_products", "Register new products");
         addPerm("edit_products", "Edit product details");
@@ -182,7 +185,6 @@ public class UsersPanel extends JPanel implements Refreshable {
         });
         actions.add(save);
         actions.add(defaults);
-        card.add(actions, BorderLayout.SOUTH);
 
         JPanel manage = new JPanel(new GridLayout(1, 2, 8, 0));
         manage.setOpaque(false);
@@ -193,7 +195,7 @@ public class UsersPanel extends JPanel implements Refreshable {
         manage.add(deactivate);
         manage.add(delete);
 
-        newPass = new JTextField();
+        newPass = UI.textField();
         newPass.putClientProperty("JTextField.placeholderText", "New password (blank = keep)");
         JButton setPass = UI.ghost("Set Password");
         setPass.addActionListener(e -> setPassword());
@@ -218,6 +220,7 @@ public class UsersPanel extends JPanel implements Refreshable {
     private void addPerm(String key, String label) {
         JCheckBox cb = new JCheckBox(label);
         cb.setOpaque(false);
+        cb.setFont(UIStyle.NORMAL);
         boxes.put(key, cb);
         permBody.add(cb);
     }
@@ -244,8 +247,7 @@ public class UsersPanel extends JPanel implements Refreshable {
 
     private void savePermissions() {
         if (currentWorker == null) {
-            JOptionPane.showMessageDialog(this, "Select a worker first.", "No selection",
-                    JOptionPane.WARNING_MESSAGE);
+            Toast.showInfo(owner, "Select a worker first.");
             return;
         }
         Permissions perms = new Permissions();
@@ -253,14 +255,12 @@ public class UsersPanel extends JPanel implements Refreshable {
         repo.savePermissions(currentWorker.getId(), perms);
         new AuditLogRepository().log(auth.getCurrentUser().getId(), auth.getCurrentUser().getUsername(),
                 "PERMISSIONS", "Updated permissions for " + currentWorker.getUsername());
-        JOptionPane.showMessageDialog(this, "Permissions saved for " + currentWorker.getFullName(),
-                "Done", JOptionPane.INFORMATION_MESSAGE);
+        Toast.showSuccess(owner, "Permissions saved for " + currentWorker.getFullName());
     }
 
     private void toggleActive() {
         if (currentWorker == null) {
-            JOptionPane.showMessageDialog(this, "Select a worker first.", "No selection",
-                    JOptionPane.WARNING_MESSAGE);
+            Toast.showInfo(owner, "Select a worker first.");
             return;
         }
         User u = repo.findById(currentWorker.getId());
@@ -273,13 +273,11 @@ public class UsersPanel extends JPanel implements Refreshable {
 
     private void deleteWorker() {
         if (currentWorker == null) {
-            JOptionPane.showMessageDialog(this, "Select a worker first.", "No selection",
-                    JOptionPane.WARNING_MESSAGE);
+            Toast.showInfo(owner, "Select a worker first.");
             return;
         }
         if (currentWorker.isAdmin()) {
-            JOptionPane.showMessageDialog(this, "Cannot delete an admin.",
-                    "Denied", JOptionPane.ERROR_MESSAGE);
+            Toast.showError(owner, "Cannot delete an admin.");
             return;
         }
         int confirm = JOptionPane.showConfirmDialog(this,
@@ -296,20 +294,17 @@ public class UsersPanel extends JPanel implements Refreshable {
 
     private void setPassword() {
         if (currentWorker == null) {
-            JOptionPane.showMessageDialog(this, "Select a worker first.", "No selection",
-                    JOptionPane.WARNING_MESSAGE);
+            Toast.showInfo(owner, "Select a worker first.");
             return;
         }
         String pw = newPass.getText().trim();
         if (pw.length() < 4) {
-            JOptionPane.showMessageDialog(this, "Password must be at least 4 characters.",
-                    "Weak", JOptionPane.WARNING_MESSAGE);
+            Toast.showError(owner, "Password must be at least 4 characters.");
             return;
         }
         repo.changePassword(currentWorker.getId(), PasswordUtil.hash(pw));
         newPass.setText("");
-        JOptionPane.showMessageDialog(this, "Password updated.", "Done",
-                JOptionPane.INFORMATION_MESSAGE);
+        Toast.showSuccess(owner, "Password updated.");
     }
 
     private void refreshTable() {
